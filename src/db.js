@@ -1,6 +1,9 @@
+// src/db.js
 import mongoose from "mongoose";
 
 mongoose.set("strictQuery", true);
+// Optional but useful: fail fast instead of buffering
+mongoose.set("bufferCommands", false);
 
 let cached =
   global.mongoose || (global.mongoose = { conn: null, promise: null });
@@ -8,18 +11,14 @@ let cached =
 export async function connectDB(uri, dbName) {
   if (!uri) throw new Error("MONGODB_URI missing");
 
-  // If connection already exists, use it
-  if (cached.conn) {
-    return cached.conn;
-  }
+  if (cached.conn) return cached.conn;
 
-  // Otherwise, start a new connection
   if (!cached.promise) {
     cached.promise = mongoose
-      .connect(uri, { dbName })
+      .connect(uri, { dbName, serverSelectionTimeoutMS: 8000 })
       .then((m) => {
-        console.log("✅ MongoDB connected:", dbName);
-        return m;
+        console.log("✅ MongoDB connected:", dbName || "(from URI)");
+        return m.connection;
       })
       .catch((err) => {
         console.error("❌ MongoDB connection error:", err.message);
